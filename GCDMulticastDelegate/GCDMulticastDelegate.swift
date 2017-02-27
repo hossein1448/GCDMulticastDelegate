@@ -8,7 +8,7 @@
 
 import UIKit
 
-class GCDMulticastDelegateNode: NSObject {
+class GCDMulticastDelegateNode {
     
     weak var delegate:AnyObject!
     var delegateQueue:DispatchQueue!
@@ -22,9 +22,9 @@ class GCDMulticastDelegateNode: NSObject {
 
 
 
-class GCDMulticastDelegate <T>: NSObject {
+class GCDMulticastDelegate <T> {
     
-    private var delegateNodes:Array<GCDMulticastDelegateNode> = []
+    private var delegateNodes = [GCDMulticastDelegateNode]()
     
     public func addDelegate(deleg delegate:AnyObject! ,queue delegateQueue:DispatchQueue!) {
         
@@ -36,10 +36,12 @@ class GCDMulticastDelegate <T>: NSObject {
             return
         }
         
-        let node:GCDMulticastDelegateNode = GCDMulticastDelegateNode(delegate: delegate, delegateQueue: delegateQueue);
+        let node = GCDMulticastDelegateNode(delegate: delegate, delegateQueue: delegateQueue)
         
-        delegateNodes.append(node)
-        
+        self.synchronized(lockObj: delegateNodes as AnyObject!, closure: {
+            
+          delegateNodes.append(node)
+        })
     }
     
     public func removeDelegate(deleg delegate:AnyObject! ,queue delegateQueue:DispatchQueue!) {
@@ -48,17 +50,20 @@ class GCDMulticastDelegate <T>: NSObject {
             return
         }
         
-        for i in (0..<delegateNodes.count).reversed() {
+        self.synchronized(lockObj: delegateNodes as AnyObject!, closure: {
             
-            let nodeDelegate:GCDMulticastDelegateNode = delegateNodes[i]
-            if nodeDelegate.delegate.isEqual(delegate) {
+            for i in (0..<delegateNodes.count).reversed() {
                 
-                if delegateQueue == nil || delegateQueue.isEqual(nodeDelegate.delegateQueue) {
+                let nodeDelegate:GCDMulticastDelegateNode = delegateNodes[i]
+                if nodeDelegate.delegate.isEqual(delegate) {
                     
-                    delegateNodes.remove(at: i)
+                    if delegateQueue == nil || delegateQueue.isEqual(nodeDelegate.delegateQueue) {
+                        
+                        delegateNodes.remove(at: i)
+                    }
                 }
             }
-        }
+        })
     }
     
     public func removeDelegate(deleg delegate:AnyObject!) {
@@ -67,20 +72,24 @@ class GCDMulticastDelegate <T>: NSObject {
             return
         }
         
-        for i in (0..<delegateNodes.count).reversed() {
-            
-            let nodeDelegate:GCDMulticastDelegateNode = delegateNodes[i]
-            if nodeDelegate.delegate.isEqual(delegate) {
+        self.synchronized(lockObj: delegateNodes as AnyObject!, closure: {
+        
+            for i in (0..<delegateNodes.count).reversed() {
                 
-                delegateNodes.remove(at: i)
+                let nodeDelegate:GCDMulticastDelegateNode = delegateNodes[i]
+                if nodeDelegate.delegate.isEqual(delegate) {
+                    
+                    delegateNodes.remove(at: i)
+                }
             }
-        }
+        })
     }
     
     public func removeAllDelegate() {
         
-        delegateNodes.removeAll()
-        
+        self.synchronized(lockObj: delegateNodes as AnyObject!, closure: {
+            delegateNodes.removeAll()
+            })
     }
     
     public func count() -> Int {
@@ -122,6 +131,8 @@ class GCDMulticastDelegate <T>: NSObject {
             let nodeDelegate:GCDMulticastDelegateNode = delegateNodes[i]
             if nodeDelegate.delegate == nil {
                 
+                // a delegate reference was disappeared.
+                // removing nil delegate nodes from the observer
                 delegateNodes.remove(at: i)
                 
             }else{
@@ -136,6 +147,13 @@ class GCDMulticastDelegate <T>: NSObject {
     
     deinit {
         
-        self.delegateNodes.removeAll()
+        self.removeAllDelegate()
+    }
+    
+    private func synchronized(lockObj: AnyObject!, closure: ()->Void)
+    {
+        objc_sync_enter(lockObj)
+        closure()
+        objc_sync_exit(lockObj)
     }
 }
