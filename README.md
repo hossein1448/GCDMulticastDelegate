@@ -4,13 +4,19 @@ GCDMulticastDelegate is simple class that provides multicast/one-to-many delegat
 * It provides a means for managing a list of delegates.
 * This class also provides proper support for GCD queues.So each delegate specifies which queue they would like their delegate invocations to be dispatched onto.
 * All delegate dispatching is done asynchronously. It also uses weak refrences for keep delegates to avoid [Memory Leak](https://en.wikipedia.org/wiki/Memory_leak).
-* It's compatible with Swift 3.
+* It's completely thread-safe
 
 For More Information You can refer to [Observer Pattern](https://en.wikipedia.org/wiki/Observer_pattern)
 
 Installation
 ============
 Simply just add `GCDMulticastDelegate.swift` to your project
+
+## Requirements
+
+- iOS 8.0+ / macOS 10.10+ / tvOS 9.0+ / watchOS 2.0+
+- Xcode 8.1+
+- Swift 3.0+
 
 Usage
 ============
